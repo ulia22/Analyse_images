@@ -8,16 +8,18 @@ using namespace std;
 
 int main(int argc, char **argv)
 {
-	char black_pgm[250], black_ppm[250], pathImgColor[250], pathImgGris[250];
-	if (argc != 5)
+	char black_pgm[250], black_ppm[250], pathImgColor[250], pathImgGris[250], pathImgR[250], pathImgB[250];
+	if (argc != 7)
 	{
-		printf("Usage: black.pgm black.ppm imgColor.ppm imgGris.pgm\n"); 
+		printf("Usage: black.pgm black.ppm imgColor.ppm imgGris.pgm imgR.pgm imgB.pgm\n"); 
 		return 1;
 	}
 	sscanf (argv[1],"%s", black_pgm);
 	sscanf (argv[2],"%s", black_ppm);
 	sscanf (argv[3],"%s", pathImgColor);
 	sscanf (argv[4],"%s", pathImgGris);
+	sscanf (argv[5],"%s", pathImgR);
+	sscanf (argv[6],"%s", pathImgB);
 
 	ImageBase black_pgm_im;
 	black_pgm_im.load(black_pgm);
@@ -30,6 +32,12 @@ int main(int argc, char **argv)
 
 	ImageBase img_Gris;
 	img_Gris.load(pathImgGris);
+	
+	ImageBase img_R;
+	img_R.load(pathImgR);
+	
+	ImageBase img_B;
+	img_B.load(pathImgB);
 
 	/*////////////////////////////////////////
 	//////////////////////////////////////////
@@ -98,8 +106,33 @@ int main(int argc, char **argv)
 	img_Gris.save("../Rapport/Img_Gris.pgm");
 
 	img_Gris.egaliser();
+	img_Gris.saveDDP("../Rapport/DDP_Img_Gris.dat");
+	img_Gris.saveFa("../Rapport/Fa_Img_Gris.dat");
 	img_Gris.saveHisto("../Rapport/histo_Img_Gris_egalise.dat");
 	img_Gris.save("../Rapport/Img_Gris_egalise.pgm");
 
-	return 0;
+
+	/*////////////////////////////////////////
+	//////////////////////////////////////////
+	Tp2 Exercice 4
+
+	//////////////////////////////////////////
+	////////////////////////////////////////*/
+	
+	img_R.saveHisto("../Rapport/histo_img_R.dat");
+	img_B.saveHisto("../Rapport/histo_img_B.dat");
+	img_R.save("../Rapport/img_R.pgm");
+	img_B.save("../Rapport/img_B.pgm");
+	
+	img_B.egaliser();
+	img_B.saveHisto("../Rapport/histo_img_B_egalise.dat");
+	img_B.save("../Rapport/img_B_egalise.pgm");
+	
+	img_B.desegaliser(img_R);
+	cout << "test3" << endl;
+	img_B.save("../Rapport/img_B_desegalise_img_R.pgm");
+	cout << "test4" << endl;
+	img_B.saveHisto("../Rapport/histo_img_B_desegalise.dat");
+	cout << "test5" << endl;
+	exit(EXIT_SUCCESS);
 }

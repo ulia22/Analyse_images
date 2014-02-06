@@ -15,8 +15,12 @@
 
 #include "ImageBase.h"
 #include "image_ppm.h"
+#include <stdio.h>
+#include <fstream>
+#include <iostream>
 
 
+using namespace std;
 
 ImageBase::ImageBase(void)
 {
@@ -167,9 +171,9 @@ void ImageBase::copy(const ImageBase &copy)
 	isValid = false;
 	init();
 	
-	color = copy.color;
-	height = copy.height;
-	width = copy.width;
+	color 	= copy.color;
+	height 	= copy.height;
+	width 	= copy.width;
 	nTaille = copy.nTaille;
 	isValid = copy.isValid;
 	
@@ -206,20 +210,238 @@ unsigned char *ImageBase::operator[](int l)
 }
 
 /**
+	Expension de l'image.
+**/
+int ImageBase::expand(int a0, int a1){
+	unsigned char* data = this->getData();
+	int alpha = -(0*a1 + 255*a0) / (a1 - a0); 
+	int beta = (255 - 0) / (a1 - a0);
+
+	for(int i = 0; i < this->getTotalSize(); i++){
+		data[i] = alpha + beta * data[i];
+	}
+	return 0;
+}
+
+/**
+	Expension de l'image (couleur).
+**/
+int ImageBase::expandColor(int a0R, int a1R, int a0G, int a1G, int a0B, int a1B){
+	unsigned char* data = this->getData();
+
+	//Red
+	int alphaR = -(0*a1R + 255*a0R) / (a1R - a0R); 
+	int betaR = (255 - 0) / (a1R - a0R);
+
+	//Green
+	int alphaG = -(0*a1G + 255*a0G) / (a1G - a0G); 
+	int betaG = (255 - 0) / (a1G - a0G);
+
+	//Blue
+	int alphaB = -(0*a1B + 255*a0B) / (a1B - a0B); 
+	int betaB = (255 - 0) / (a1B - a0B);
+
+	for(int i = 0; i < this->getTotalSize(); i += 3){
+		data[i] = alphaR + betaR * data[i];
+		data[i+1] = alphaG + betaG * data[i+1];
+		data[i+2] = alphaB + betaB * data[i+2];
+	}
+	return 0;
+}
+
+/**
+	Crée et sauvegarde l'histogramme de l'image.
+**/
+int ImageBase::saveHisto(string path){
+	ofstream file(path.c_str(), ios::out | ios::trunc);
+	if(file){
+		if(this->getColor()){//Pour une image en couleur.
+			int histo[3][256];
+			this->getHistoColor(histo);
+
+			for(int i = 0; i < 256; i++)
+			file << i << " " << histo[0][i] << " " << histo[1][i]<< " " << histo[2][i] << endl;
+			file.close();
+		}else{
+			int histo[256];
+			this->getHisto(histo);
+
+			for(int i = 0; i < 256; i++)
+			file << i << " " << histo[i] << endl;
+			file.close();
+		}
+	}else{
+		return -1;
+	}
+	return 0;
+}
+/**
 	Retourne l'histogramme de l'image.
 **/
-int *getHisto(void){
-	int res[256];
-	int nb, i, j, req,
-	unsigned char* data = this.getData();
+int ImageBase::getHisto(int* tab){
+	int nb, i, j;
+	unsigned char* data = this->getData();
 	
 	for(i = 0; i < 256; ++i){//Pour chaque valeur possibles:0-255
-		nb = 0;
-		for(j = 0; j < this.getTotalSize(); ++j){//** Pour chaque recherche
+		tab[i] = 0;
+		for(j = 0; j < this->getTotalSize(); ++j){
 			if(data[j] == i){
-				++nb;
+				tab[i]++;
 			}
 		}
 	}
 	
+	return 0;
 }
+
+/*
+	Retourne l'histogramme pour une image couleur.
+*/
+int ImageBase::getHistoColor(int tab[][256]){
+	int i, j;
+	unsigned char* data = this->getData();
+	
+	for(i = 0; i < 256; ++i){//Pour chaque valeur possibles:0-255
+		tab[0][i] 	= 0;
+		tab[1][i] 	= 0;
+		tab[2][i] 	= 0;
+		for(j = 0; j < this->getTotalSize(); j += 3){
+			//Red
+			if(data[j] == i){
+				tab[0][i]++;
+			}
+
+			//Green
+			if(data[j+1] == i){
+				tab[1][i]++;
+			}
+			//Blue
+			if(data[j+2] == i){
+				tab[2][i]++;
+			}
+		}
+	}	
+	return 0;
+}
+
+/**
+	Egalise une image
+**/
+int ImageBase::egaliser(){
+	unsigned char* data = this->getData();
+	double F[256];
+	unsigned char T[256];
+
+	this->getFa(F);
+
+	//On calcule T pour 255 niveaux de gris
+	for(int i =0; i < 256; i++){
+		T[i] = (int)(255.*F[i]);
+	}
+
+	for(int i = 0; i < this->getTotalSize(); i++){
+		data[i] = T[data[i]];
+	}
+	return 0;
+}
+
+/**
+Déségalise une image en utilisant la fonction de répartition inverse d'une autre image.
+**/
+int ImageBase::desegaliser(ImageBase img){
+	unsigned char* data = this->getData();
+	double F[256];
+	img.getFa(F);
+	int indice = 0;
+	double tmp = 0., space = 1000., current = 0.;
+	
+	cout << "test1" << endl;
+	for(int i = 0; i < this->getTotalSize(); i++){
+		current = (double)data[i]/(double)255.;
+		for(int j = 0; j < 256; j++){
+			tmp = current - F[j];
+			if(tmp < 0.)
+				tmp *= -1.;
+				
+			if(tmp < space){
+				space = tmp;
+				indice = j;
+			}
+		}
+		data[i] = (unsigned char)(F[indice]*255.);
+		space = 1000.;
+		tmp = 0.;
+		indice = 0;
+	}
+	cout << "test2" << endl;
+	return 0;
+}
+
+
+/**
+Calcule le ddp d'une image.
+**/
+int ImageBase::calculerDDP(double* ddp){
+
+	int histo[256];
+	this->getHisto(histo);
+
+	for(int i =0; i < 256; i++){
+		ddp[i] = (double)histo[i]/(double)this->getTotalSize();
+	}
+	return 0;
+}
+
+/**
+	Calcule la fonction de repartition de l'image donnée.
+**/
+int ImageBase::getFa(double* F){
+	double ddp[256];
+	this->calculerDDP(ddp);
+	
+	F[0] = ddp[0];
+	for(int i = 1; i < 256; i++){
+		F[i] = F[i-1] + ddp[i];
+	}
+	return 0;
+}
+
+/**
+	Calcule et sauvegarde le ddp de l'image.
+**/
+int ImageBase::saveDDP(string path){
+	if(!this->getColor()){//Pour une image NB.
+		ofstream file(path.c_str(), ios::out | ios::trunc);
+		if(file){
+			double ddp[256];
+			this->calculerDDP(ddp);
+
+			for(int i = 0; i < 256; i++)
+			file << i << " " << ddp[i] << endl;
+			file.close();
+		}else{
+			return -1;
+		}
+	}
+	return 0;
+}
+
+/**
+	Calcule et sauvegarde Fa
+**/
+int ImageBase::saveFa(string path){
+	double F[256];
+	this->getFa(F);
+	
+	ofstream file(path.c_str(), ios::out | ios::trunc);
+		if(file){	
+			for(int i = 0; i < 256; i++)
+			file << i << " " << F[i] << endl;
+			file.close();
+		}else{
+			return -1;
+		}
+		return 0;
+}
+
+

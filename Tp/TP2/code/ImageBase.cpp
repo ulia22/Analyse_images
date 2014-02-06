@@ -324,23 +324,19 @@ int ImageBase::getHistoColor(int tab[][256]){
 	return 0;
 }
 
+/**
+	Egalise une image
+**/
 int ImageBase::egaliser(){
 	unsigned char* data = this->getData();
-	unsigned char ddp[256];
-	unsigned char F[256];
+	double F[256];
 	unsigned char T[256];
 
-	calculerDDP(ddp);
-
-	//On applique la fonction F pour les 256 niveaux de gris
-	F[0] = ddp[0];
-	for(int i = 1; i < 256; i++){
-		F[i] = F[i-1] + ddp[i];
-	}
+	this->getFa(F);
 
 	//On calcule T pour 255 niveaux de gris
 	for(int i =0; i < 256; i++){
-		T[i] = 255*F[i];
+		T[i] = (int)(255.*F[i]);
 	}
 
 	for(int i = 0; i < this->getTotalSize(); i++){
@@ -349,14 +345,103 @@ int ImageBase::egaliser(){
 	return 0;
 }
 
-int ImageBase::calculerDDP(unsigned char* ddp){
+/**
+Déségalise une image en utilisant la fonction de répartition inverse d'une autre image.
+**/
+int ImageBase::desegaliser(ImageBase img){
+	unsigned char* data = this->getData();
+	double F[256];
+	img.getFa(F);
+	int indice = 0;
+	double tmp = 0., space = 1000., current = 0.;
+	
+	cout << "test1" << endl;
+	for(int i = 0; i < this->getTotalSize(); i++){
+		current = (double)data[i]/(double)255.;
+		for(int j = 0; j < 256; j++){
+			tmp = current - F[j];
+			if(tmp < 0.)
+				tmp *= -1.;
+				
+			if(tmp < space){
+				space = tmp;
+				indice = j;
+			}
+		}
+		data[i] = (unsigned char)(F[indice]*255.);
+		space = 1000.;
+		tmp = 0.;
+		indice = 0;
+	}
+	cout << "test2" << endl;
+	return 0;
+}
+
+
+/**
+Calcule le ddp d'une image.
+**/
+int ImageBase::calculerDDP(double* ddp){
 
 	int histo[256];
 	this->getHisto(histo);
 
 	for(int i =0; i < 256; i++){
-		ddp[i] = histo[i]/this->getTotalSize();
+		ddp[i] = (double)histo[i]/(double)this->getTotalSize();
 	}
 	return 0;
 }
+
+/**
+	Calcule la fonction de repartition de l'image donnée.
+**/
+int ImageBase::getFa(double* F){
+	double ddp[256];
+	this->calculerDDP(ddp);
+	
+	F[0] = ddp[0];
+	for(int i = 1; i < 256; i++){
+		F[i] = F[i-1] + ddp[i];
+	}
+	return 0;
+}
+
+/**
+	Calcule et sauvegarde le ddp de l'image.
+**/
+int ImageBase::saveDDP(string path){
+	if(!this->getColor()){//Pour une image NB.
+		ofstream file(path.c_str(), ios::out | ios::trunc);
+		if(file){
+			double ddp[256];
+			this->calculerDDP(ddp);
+
+			for(int i = 0; i < 256; i++)
+			file << i << " " << ddp[i] << endl;
+			file.close();
+		}else{
+			return -1;
+		}
+	}
+	return 0;
+}
+
+/**
+	Calcule et sauvegarde Fa
+**/
+int ImageBase::saveFa(string path){
+	double F[256];
+	this->getFa(F);
+	
+	ofstream file(path.c_str(), ios::out | ios::trunc);
+		if(file){	
+			for(int i = 0; i < 256; i++)
+			file << i << " " << F[i] << endl;
+			file.close();
+		}else{
+			return -1;
+		}
+		return 0;
+}
+
 

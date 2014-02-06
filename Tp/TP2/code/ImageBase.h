@@ -65,8 +65,12 @@ public:
 	int expand(int a0, int a1);
 	int expandColor(int a0R, int a1R, int a0G, int a1G, int a0B, int a1B);
 	int saveHisto(string path);
-	int calculerDDP(unsigned char* ddp);
+	int calculerDDP(double* ddp);
+	int getFa(double* F);
 	int egaliser();
+	int desegaliser(ImageBase img);
+	int saveDDP(string path);
+	int saveFa(string path);
 	void load(char *filename);
 	bool save(char *filename);
 
